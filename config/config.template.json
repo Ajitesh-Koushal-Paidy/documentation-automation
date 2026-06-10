@@ -1,0 +1,45 @@
+{
+  "confluence": {
+    "url": "https://your-domain.atlassian.net",
+    "email": "your.email@company.com",
+    "token": "YOUR_CONFLUENCE_API_TOKEN_HERE"
+  },
+  "pages": {
+    "mobileApp": {
+      "id": "5015076940",
+      "name": "Mobile App Documentation",
+      "repoPath": "/path/to/paidy-app-rn"
+    },
+    "checkout": {
+      "id": "5015404871",
+      "name": "Checkout Documentation",
+      "docsPath": "/path/to/checkout-docs"
+    },
+    "paecs": {
+      "id": "3223651657",
+      "name": "PAECS Handbook"
+    }
+  },
+  "sentry": {
+    "org": "paidy",
+    "project": "paidy-app-rn",
+    "token": "YOUR_SENTRY_AUTH_TOKEN_HERE"
+  },
+  "jira": {
+    "baseUrl": "https://your-domain.atlassian.net",
+    "email": "your.email@company.com",
+    "token": "YOUR_JIRA_API_TOKEN_HERE",
+    "project": "BDPA"
+  },
+  "notifications": {
+    "email": "your.email@company.com",
+    "slack": {
+      "enabled": false,
+      "webhookUrl": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+    }
+  },
+  "schedule": {
+    "documentation": "0 9 * * 1",
+    "sentry": "0 9 * * *"
+  }
+}
