@@ -15,23 +15,19 @@ You are a specialized agent for managing documentation updates and Sentry-Jira a
 You manage three Confluence documentation pages:
 
 **Mobile App Documentation**
-- Page ID: 5015076940
-- URL: https://paidy-portal.atlassian.net/wiki/spaces/UXE/pages/5015076940
-- Script: `/Users/ajitesh.koushal/auto-update-confluence.py`
+- Script: `scripts/auto-update-confluence.py`
 - Monitors: Git repository changes (screens, GraphQL, Mixpanel)
-- Health check: `python3 /Users/ajitesh.koushal/doc-health-check.py`
+- Health check: `scripts/doc-health-check.py`
 
 **Checkout Documentation**
-- Page ID: 5015404871
-- URL: https://paidy-portal.atlassian.net/wiki/spaces/UXE/pages/5015404871
-- Script: `/Users/ajitesh.koushal/auto-update-checkout-confluence.py`
-- Monitors: 9 markdown files in `/Users/ajitesh.koushal/checkout-*.md`
+- Script: `scripts/auto-update-checkout-confluence.py`
+- Monitors: 9 markdown files (checkout-*.md)
 
 **PAECS Handbook**
-- Page ID: 3223651657
-- URL: https://paidy-portal.atlassian.net/wiki/spaces/UXE/pages/3223651657
-- Script: `/Users/ajitesh.koushal/auto-update-paecs-confluence.py`
+- Script: `scripts/auto-update-paecs-confluence.py`
 - Updates: Weekly date refresh
+
+**Note:** All page IDs, URLs, and paths are now loaded from `config/config.json` or environment variables.
 
 ### 2. Sentry-Jira Automation
 
@@ -63,9 +59,9 @@ You manage three Confluence documentation pages:
 
 All automations run every Monday at 9:00 AM:
 ```bash
-0 9 * * 1 python3 /Users/ajitesh.koushal/auto-update-confluence.py >> /Users/ajitesh.koushal/auto-update-cron.log 2>&1
-0 9 * * 1 python3 /Users/ajitesh.koushal/auto-update-checkout-confluence.py >> /Users/ajitesh.koushal/auto-update-checkout-cron.log 2>&1
-0 9 * * 1 python3 /Users/ajitesh.koushal/auto-update-paecs-confluence.py >> /Users/ajitesh.koushal/auto-update-paecs-cron.log 2>&1
+0 9 * * 1 cd /Users/ajitesh.koushal/projects/documentation-automation && python3 scripts/auto-update-confluence.py >> ~/auto-update-cron.log 2>&1
+0 9 * * 1 cd /Users/ajitesh.koushal/projects/documentation-automation && python3 scripts/auto-update-checkout-confluence.py >> ~/auto-update-cron.log 2>&1
+0 9 * * 1 cd /Users/ajitesh.koushal/projects/documentation-automation && python3 scripts/auto-update-paecs-confluence.py >> ~/auto-update-cron.log 2>&1
 ```
 
 Sentry-Jira automation runs daily at 9:03 AM (already scheduled).
@@ -76,27 +72,50 @@ Sentry-Jira automation runs daily at 9:03 AM (already scheduled).
 
 ```bash
 # Check all three Confluence pages
+cd /Users/ajitesh.koushal/projects/documentation-automation
 python3 << 'EOF'
 import requests
+import os
 from datetime import datetime
 
-pages = {
-    'Mobile App': '5015076940',
-    'Checkout': '5015404871',
-    'PAECS': '3223651657'
-}
+# Load configuration
+try:
+    from scripts.config_loader import get_config
+    config = get_config()
+    EMAIL = config.confluence_email
+    TOKEN = config.confluence_token
+    CONFLUENCE_URL = config.confluence_url
+    pages = {
+        'Mobile App': config.get_page_id('mobileApp'),
+        'Checkout': config.get_page_id('checkout'),
+        'PAECS': config.get_page_id('paecs')
+    }
+except ImportError:
+    # Fallback to environment variables
+    EMAIL = os.getenv('CONFLUENCE_EMAIL')
+    TOKEN = os.getenv('CONFLUENCE_API_TOKEN')
+    CONFLUENCE_URL = os.getenv('CONFLUENCE_URL', 'https://your-domain.atlassian.net')
+    pages = {
+        'Mobile App': os.getenv('MOBILE_APP_PAGE_ID'),
+        'Checkout': os.getenv('CHECKOUT_PAGE_ID'),
+        'PAECS': os.getenv('PAECS_PAGE_ID')
+    }
 
-import os
-
-EMAIL = 'ajitesh.koushal@paidy.com'
-TOKEN = os.getenv('CONFLUENCE_API_TOKEN')
+if not TOKEN:
+    print('❌ Error: CONFLUENCE_API_TOKEN not set')
+    print('   Set environment variable or create config/config.json')
+    exit(1)
 
 print('📊 DOCUMENTATION STATUS DASHBOARD')
 print('=' * 60)
 
 for name, page_id in pages.items():
+    if not page_id:
+        print(f'\n⚠️  {name}: Page ID not configured')
+        continue
+    
     r = requests.get(
-        f'https://paidy-portal.atlassian.net/wiki/rest/api/content/{page_id}?expand=version',
+        f'{CONFLUENCE_URL}/wiki/rest/api/content/{page_id}?expand=version',
         auth=(EMAIL, TOKEN)
     )
     if r.status_code == 200:
@@ -115,31 +134,33 @@ EOF
 
 ```bash
 # Update all three pages
-python3 /Users/ajitesh.koushal/auto-update-confluence.py
-python3 /Users/ajitesh.koushal/auto-update-checkout-confluence.py
-python3 /Users/ajitesh.koushal/auto-update-paecs-confluence.py
+cd /Users/ajitesh.koushal/projects/documentation-automation
+python3 scripts/auto-update-confluence.py
+python3 scripts/auto-update-checkout-confluence.py
+python3 scripts/auto-update-paecs-confluence.py
 ```
 
 ### View Logs
 
 ```bash
 # Mobile App logs
-tail -50 /Users/ajitesh.koushal/auto-update-log.txt
+tail -50 ~/auto-update-log.txt
 
 # Checkout logs
-tail -50 /Users/ajitesh.koushal/auto-update-checkout-log.txt
+tail -50 ~/auto-update-checkout-log.txt
 
 # PAECS logs
-tail -50 /Users/ajitesh.koushal/auto-update-paecs-log.txt
+tail -50 ~/auto-update-paecs-log.txt
 
 # All logs together
-tail -20 /Users/ajitesh.koushal/auto-update*.log
+tail -20 ~/auto-update*.log
 ```
 
 ### Check Mobile App Documentation Health
 
 ```bash
-python3 /Users/ajitesh.koushal/doc-health-check.py
+cd /Users/ajitesh.koushal/projects/documentation-automation
+python3 scripts/doc-health-check.py
 ```
 
 ### Setup Sentry-Jira Automation
@@ -183,19 +204,36 @@ cd ~/.claude/scripts/sentry-jira-automation && node run-automation.js
 
 1. **Check API token:**
 ```bash
+cd /Users/ajitesh.koushal/projects/documentation-automation
 python3 -c "
 import requests
 import os
+import sys
 
-token = os.getenv('CONFLUENCE_API_TOKEN')
+# Load configuration
+try:
+    sys.path.insert(0, 'scripts')
+    from config_loader import get_config
+    config = get_config()
+    email = config.confluence_email
+    token = config.confluence_token
+    url = config.confluence_url
+except ImportError:
+    email = os.getenv('CONFLUENCE_EMAIL')
+    token = os.getenv('CONFLUENCE_API_TOKEN')
+    url = os.getenv('CONFLUENCE_URL', 'https://your-domain.atlassian.net')
+
 if not token:
-    print('Error: CONFLUENCE_API_TOKEN environment variable not set')
+    print('❌ Error: CONFLUENCE_API_TOKEN not set')
+    print('   Set environment variable or create config/config.json')
     exit(1)
 
-r = requests.get('https://paidy-portal.atlassian.net/wiki/rest/api/user/current',
-    auth=('ajitesh.koushal@paidy.com', token))
+r = requests.get(f'{url}/wiki/rest/api/user/current', auth=(email, token))
 print(f'Token Status: {r.status_code}')
-print(f'User: {r.json().get(\"displayName\")}' if r.status_code == 200 else f'Error: {r.json()}')
+if r.status_code == 200:
+    print(f'✅ User: {r.json().get(\"displayName\")}')
+else:
+    print(f'❌ Error: {r.text}')
 "
 ```
 
