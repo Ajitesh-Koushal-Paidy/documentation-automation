@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 """
 Automated Confluence documentation updater for PAECS Handbook
 Updates the "Last Updated" date automatically
@@ -8,25 +7,41 @@ Run: python3 auto-update-paecs-confluence.py
 Or: Set up as cron job
 """
 
+import os
 import requests
 import json
 import re
 from datetime import datetime, timedelta
 
+# Import configuration loader
+try:
+    from config_loader import get_config
+    config = get_config()
+except ImportError:
+    class SimpleConfig:
+        def __init__(self):
+            self.base_dir = os.getenv('BASE_DIR', os.path.expanduser('~'))
+            self.confluence_url = os.getenv('CONFLUENCE_URL', 'https://your-domain.atlassian.net')
+            self.confluence_email = os.getenv('CONFLUENCE_EMAIL', 'your@email.com')
+            self.confluence_token = os.getenv('CONFLUENCE_API_TOKEN', '')
+        def get_page_id(self, name):
+            return os.getenv(f'{name.upper()}_PAGE_ID', '')
+    config = SimpleConfig()
+
 # ============================================================================
-# CONFIGURATION
+# CONFIGURATION - LOADED FROM CONFIG FILE OR ENVIRONMENT
 # ============================================================================
 
-# Local paths
-BASE_DIR = "/Users/ajitesh.koushal"
+# Paths
+BASE_DIR = config.base_dir
 LAST_UPDATE_FILE = f"{BASE_DIR}/.paecs-doc-last-update"
 LOG_FILE = f"{BASE_DIR}/auto-update-paecs-log.txt"
 
 # Confluence
-CONFLUENCE_URL = "https://paidy-portal.atlassian.net"
-EMAIL = "ajitesh.koushal@paidy.com"
-CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN", "YOUR_TOKEN_HERE")
-PAGE_ID = "3223651657"
+CONFLUENCE_URL = config.confluence_url
+EMAIL = config.confluence_email
+CONFLUENCE_API_TOKEN = config.confluence_token
+PAGE_ID = config.get_page_id('paecs') if hasattr(config, 'get_page_id') else os.getenv('PAECS_PAGE_ID', '')
 
 # Settings
 DRY_RUN = False  # Set to True to test without updating

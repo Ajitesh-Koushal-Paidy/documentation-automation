@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 """
 Fully automated Confluence documentation updater
 Detects changes, extracts info, and publishes automatically
@@ -8,6 +7,7 @@ Run: python3 auto-update-confluence.py
 Or: Set up as cron job / GitHub Action
 """
 
+import os
 import subprocess
 import json
 import re
@@ -16,37 +16,51 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
 
+# Import configuration loader
+try:
+    from config_loader import get_config
+    config = get_config()
+except ImportError:
+    # Fallback if config_loader not available
+    class SimpleConfig:
+        def __init__(self):
+            self.base_dir = os.getenv('BASE_DIR', os.path.expanduser('~'))
+            self.repo_path = os.getenv('REPO_PATH', f"{self.base_dir}/repo")
+            self.confluence_url = os.getenv('CONFLUENCE_URL', 'https://your-domain.atlassian.net')
+            self.confluence_email = os.getenv('CONFLUENCE_EMAIL', 'your@email.com')
+            self.confluence_token = os.getenv('CONFLUENCE_API_TOKEN', '')
+            self.figma_token = os.getenv('FIGMA_TOKEN', '')
+        def get_page_id(self, name):
+            return os.getenv(f'{name.upper()}_PAGE_ID', '')
+    config = SimpleConfig()
+
 # ============================================================================
-# CONFIGURATION - UPDATE THESE
+# CONFIGURATION - LOADED FROM CONFIG FILE OR ENVIRONMENT
 # ============================================================================
 
-# Repository
-REPO_PATH = "/Users/ajitesh.koushal/Desktop/paidy-app-rn"
-SCREENS_DIR = "src/screens"
-QUERIES_DIR = "apollo/queries"
-MIXPANEL_DIR = "vendor/Mixpanel"
-
-# Local paths
-BASE_DIR = "/Users/ajitesh.koushal"
-SCREENSHOTS_DIR = f"{BASE_DIR}/figma-screenshots-individual"
+# Paths
+REPO_PATH = config.repo_path
+BASE_DIR = config.base_dir
+SCREENSHOTS_DIR = config.screenshots_dir if hasattr(config, 'screenshots_dir') else f"{BASE_DIR}/figma-screenshots-individual"
 API_MAPPING_FILE = f"{BASE_DIR}/screen-api-mapping.json"
 MIXPANEL_MAPPING_FILE = f"{BASE_DIR}/screen-mixpanel-mapping.json"
 LAST_UPDATE_FILE = f"{BASE_DIR}/.doc-last-update"
 LOG_FILE = f"{BASE_DIR}/auto-update-log.txt"
 
+# Repository directories
+SCREENS_DIR = "src/screens"
+QUERIES_DIR = "apollo/queries"
+MIXPANEL_DIR = "vendor/Mixpanel"
+
 # Confluence
-CONFLUENCE_URL = "https://paidy-portal.atlassian.net"
-EMAIL = "ajitesh.koushal@paidy.com"
-CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN", "YOUR_TOKEN_HERE")
-PAGE_ID = "5015076940"
+CONFLUENCE_URL = config.confluence_url
+EMAIL = config.confluence_email
+CONFLUENCE_API_TOKEN = config.confluence_token
+PAGE_ID = config.get_page_id('mobileApp') if hasattr(config, 'get_page_id') else os.getenv('MOBILE_APP_PAGE_ID', '')
 
 # Figma
-FIGMA_TOKEN = os.getenv("FIGMA_TOKEN", "YOUR_FIGMA_TOKEN_HERE")
-FIGMA_FILE_KEYS = [
-    "N9udhE5uXkpWbeFqANlCKt",  # Auth & Onboarding
-    "fMTt9gNfuq9yt0e9XFKEpJ",  # Home
-    # Add more as needed
-]
+FIGMA_TOKEN = config.figma_token
+FIGMA_FILE_KEYS = []  # Load from config if available
 
 # Settings
 DRY_RUN = False  # Set to True to test without actually updating Confluence
@@ -79,21 +93,55 @@ def get_last_update_date():
 
 def get_changed_files(since_date):
     """Get files changed since date"""
-    cmd = f"cd {REPO_PATH} && git log --since='{since_date}' --name-only --pretty=format: | sort -u"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    return [f for f in result.stdout.split('\n') if f.strip()]
+    # SECURITY FIX: Use list-based subprocess instead of shell=True
+    try:
+        result = subprocess.run(
+            ['git', 'log', f'--since={since_date}', '--name-only', '--pretty=format:'],
+            cwd=REPO_PATH,
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        files = [f.strip() for f in result.stdout.split('\n') if f.strip()]
+        # Sort unique
+        return sorted(set(files))
+    except Exception as e:
+        log(f"Error getting changed files: {e}", "ERROR")
+        return []
 
 def get_new_screens(since_date):
     """Get newly added screens"""
-    cmd = f"cd {REPO_PATH} && git log --since='{since_date}' --diff-filter=A --name-only --pretty=format: | grep 'Screen.tsx' | sort -u"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    return [f for f in result.stdout.split('\n') if f.strip()]
+    # SECURITY FIX: Use list-based subprocess instead of shell=True
+    try:
+        result = subprocess.run(
+            ['git', 'log', f'--since={since_date}', '--diff-filter=A', '--name-only', '--pretty=format:'],
+            cwd=REPO_PATH,
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        files = [f.strip() for f in result.stdout.split('\n') if f.strip() and 'Screen.tsx' in f]
+        return sorted(set(files))
+    except Exception as e:
+        log(f"Error getting new screens: {e}", "ERROR")
+        return []
 
 def get_modified_screens(since_date):
     """Get modified screens"""
-    cmd = f"cd {REPO_PATH} && git log --since='{since_date}' --diff-filter=M --name-only --pretty=format: | grep 'Screen.tsx' | sort -u"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    return [f for f in result.stdout.split('\n') if f.strip()]
+    # SECURITY FIX: Use list-based subprocess instead of shell=True
+    try:
+        result = subprocess.run(
+            ['git', 'log', f'--since={since_date}', '--diff-filter=M', '--name-only', '--pretty=format:'],
+            cwd=REPO_PATH,
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        files = [f.strip() for f in result.stdout.split('\n') if f.strip() and 'Screen.tsx' in f]
+        return sorted(set(files))
+    except Exception as e:
+        log(f"Error getting modified screens: {e}", "ERROR")
+        return []
 
 # ============================================================================
 # CODE ANALYSIS

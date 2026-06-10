@@ -1,4 +1,10 @@
 {
+  "paths": {
+    "baseDir": "/path/to/your/base/directory",
+    "repoPath": "/path/to/your/mobile-app-repo",
+    "screenshotsDir": "/path/to/figma-screenshots",
+    "docsPath": "/path/to/checkout-docs"
+  },
   "confluence": {
     "url": "https://your-domain.atlassian.net",
     "email": "your.email@company.com",
@@ -6,30 +12,35 @@
   },
   "pages": {
     "mobileApp": {
-      "id": "5015076940",
-      "name": "Mobile App Documentation",
-      "repoPath": "/path/to/paidy-app-rn"
+      "id": "YOUR_MOBILE_APP_PAGE_ID",
+      "name": "Mobile App Documentation"
     },
     "checkout": {
-      "id": "5015404871",
-      "name": "Checkout Documentation",
-      "docsPath": "/path/to/checkout-docs"
+      "id": "YOUR_CHECKOUT_PAGE_ID",
+      "name": "Checkout Documentation"
     },
     "paecs": {
-      "id": "3223651657",
+      "id": "YOUR_PAECS_PAGE_ID",
       "name": "PAECS Handbook"
     }
   },
+  "figma": {
+    "token": "YOUR_FIGMA_TOKEN_HERE",
+    "fileKeys": [
+      "YOUR_FIGMA_FILE_KEY_1",
+      "YOUR_FIGMA_FILE_KEY_2"
+    ]
+  },
   "sentry": {
-    "org": "paidy",
-    "project": "paidy-app-rn",
+    "org": "your-org",
+    "project": "your-project",
     "token": "YOUR_SENTRY_AUTH_TOKEN_HERE"
   },
   "jira": {
     "baseUrl": "https://your-domain.atlassian.net",
     "email": "your.email@company.com",
     "token": "YOUR_JIRA_API_TOKEN_HERE",
-    "project": "BDPA"
+    "project": "YOUR_PROJECT_KEY"
   },
   "notifications": {
     "email": "your.email@company.com",
@@ -41,5 +52,12 @@
   "schedule": {
     "documentation": "0 9 * * 1",
     "sentry": "0 9 * * *"
+  },
+  "settings": {
+    "dryRun": false,
+    "minChangesToUpdate": 1,
+    "screensDir": "src/screens",
+    "queriesDir": "apollo/queries",
+    "mixpanelDir": "vendor/Mixpanel"
   }
 }

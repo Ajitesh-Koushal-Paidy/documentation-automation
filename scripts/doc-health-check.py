@@ -4,9 +4,20 @@ Check documentation health metrics
 Run: python3 doc-health-check.py
 """
 
+import os
 import json
 from pathlib import Path
 from datetime import datetime
+
+# Import configuration loader
+try:
+    from config_loader import get_config
+    config = get_config()
+    BASE_DIR = config.base_dir
+    SCREENSHOTS_DIR = config.screenshots_dir if hasattr(config, 'screenshots_dir') else f"{BASE_DIR}/figma-screenshots-individual"
+except ImportError:
+    BASE_DIR = os.getenv('BASE_DIR', os.path.expanduser('~'))
+    SCREENSHOTS_DIR = f"{BASE_DIR}/figma-screenshots-individual"
 
 def check_health():
     """Generate health report"""
@@ -18,10 +29,10 @@ def check_health():
 
     try:
         # Load mappings
-        with open('/Users/ajitesh.koushal/screen-api-mapping.json') as f:
+        with open(f'{BASE_DIR}/screen-api-mapping.json') as f:
             api_mappings = json.load(f)
 
-        with open('/Users/ajitesh.koushal/screen-mixpanel-mapping.json') as f:
+        with open(f'{BASE_DIR}/screen-mixpanel-mapping.json') as f:
             mixpanel_mappings = json.load(f)
 
         # Count screens
@@ -31,7 +42,7 @@ def check_health():
         screens_with_mixpanel = len(mixpanel_mappings)
 
         # Screenshots
-        screenshots_dir = Path('/Users/ajitesh.koushal/figma-screenshots-individual')
+        screenshots_dir = Path(SCREENSHOTS_DIR)
         screenshots_count = 0
         if screenshots_dir.exists():
             screenshots_count = len(list(screenshots_dir.glob('*.png')))
