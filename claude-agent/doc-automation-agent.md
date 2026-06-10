@@ -53,12 +53,11 @@ You manage three Confluence documentation pages:
 
 ### API Tokens
 
-**Confluence API Token:** 
-```
-REDACTED_CONFLUENCE_TOKEN
-```
+**Confluence API Token:** Set via environment variable `CONFLUENCE_API_TOKEN`
 
 **Email:** ajitesh.koushal@paidy.com
+
+**Note:** Never hardcode tokens. Always use environment variables or secure credential storage.
 
 ### Cron Schedule
 
@@ -87,8 +86,10 @@ pages = {
     'PAECS': '3223651657'
 }
 
+import os
+
 EMAIL = 'ajitesh.koushal@paidy.com'
-TOKEN = 'REDACTED_CONFLUENCE_TOKEN'
+TOKEN = os.getenv('CONFLUENCE_API_TOKEN')
 
 print('📊 DOCUMENTATION STATUS DASHBOARD')
 print('=' * 60)
@@ -165,7 +166,7 @@ cat > config.json << 'EOF'
   "sentryAuthToken": "USER_PROVIDED_TOKEN",
   "jiraBaseUrl": "https://paidy-portal.atlassian.net",
   "jiraEmail": "ajitesh.koushal@paidy.com",
-  "jiraApiToken": "REDACTED_CONFLUENCE_TOKEN",
+  "jiraApiToken": "USE_CONFLUENCE_API_TOKEN_OR_GET_FROM_ENV",
   "notificationEmail": "ajitesh.koushal@paidy.com"
 }
 EOF
@@ -184,8 +185,15 @@ cd ~/.claude/scripts/sentry-jira-automation && node run-automation.js
 ```bash
 python3 -c "
 import requests
+import os
+
+token = os.getenv('CONFLUENCE_API_TOKEN')
+if not token:
+    print('Error: CONFLUENCE_API_TOKEN environment variable not set')
+    exit(1)
+
 r = requests.get('https://paidy-portal.atlassian.net/wiki/rest/api/user/current',
-    auth=('ajitesh.koushal@paidy.com', 'REDACTED_CONFLUENCE_TOKEN'))
+    auth=('ajitesh.koushal@paidy.com', token))
 print(f'Token Status: {r.status_code}')
 print(f'User: {r.json().get(\"displayName\")}' if r.status_code == 200 else f'Error: {r.json()}')
 "
